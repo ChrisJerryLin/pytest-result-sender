@@ -16,12 +16,43 @@ license = {text = "MIT"}
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+
 [tool.pdm]
 distribution = true
 
+[tool.pdm.build]
+package-dir="src"
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "black>=24.8.0",
+    "isort>=5.13.2",
+    "flake8>=7.1.1",
+]
+
+[tool.isort]
+profile="black"
+multi_line_output=3
+
+[tool.black]
+exclude='''
+/(
+      \.git
+    | \.hg
+    | \.tox
+    | venv
+    | buck-out
+    | build
+    | dist
+)/
+'''
+[tool.pdm.scripts]
+check = { composite = [
+    "isort .",
+    "black .",
+    "flake8 .",
+]}
 
 [project.entry-points.pytest11]
 result_log = "pytest_result_sender.plugin"
 
-[tool.pdm.build]
-package-dir="src"
