@@ -9,6 +9,16 @@ data={
     "failed":0,
 }
 
+def pytest_addoption(parser):
+    parser.addini(
+        'send_when',
+        help="什么情况下发送测试结果，every or on_fail"
+    )
+    parser.addini(
+        'send_api',
+        help="测试结果发送地址"
+    )
+
 def pytest_runtest_logreport(report:pytest.TestReport):
     if report.when == 'call':
         print('本次用例的执行结果',report.outcome)
@@ -20,18 +30,23 @@ def pytest_collection_finish(session: pytest.Session):
     print("用例的总数：", data['total'])
 
 
-def pytest_configure():
+
+def pytest_configure(config: pytest.Config):
     """
+    配置加载完毕之后执行
     在所有测试用例执行前调用。
     """
     data['start_time']=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{datetime.now()} pytest执行开始")
+    data['send_when']=config.getini("send_when")
+    data['send_api']=config.getini("send_api")
 
-    print(1233456)
+
 
 
 def pytest_unconfigure():
     """
+    配置加载完毕之后执行
     在所有测试用例执行完之后调用。
     """
     data['end_time']=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -40,13 +55,19 @@ def pytest_unconfigure():
     data['duration'] = datetime.strptime(data['end_time'], "%Y-%m-%d %H:%M:%S") - datetime.strptime(data['start_time'], "%Y-%m-%d %H:%M:%S")
     data['pass_ratio']=data['passed']/data['total']*100
     data['pass_ratio']=f"{data['pass_ratio']:.2f}"
-    #assert data['duration'] > timedelta(seconds=2.5)
-    #assert data['total'] == 3
-    #assert data['passed'] == 2
-    #assert data['failed'] == 1
+    send_result()
+
+
+def send_result():
+    if data['send_when'] == 'on_fail' and data['failed'] == 0:
+        #配置了失败发送，无失败时不发送
+        return
+    if not data['send_api']:
+        #如果没有配置api地址，也不发送
+        return
 
     # 替换下面的URL为您的实际Webhook URL
-    webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/ed80416c-ce34-41e0-8c92-173850c7aada"
+    webhook_url = data['send_api']
 
     # 构建消息内容
     data01 = {
@@ -110,3 +131,6 @@ def pytest_unconfigure():
         print("消息发送成功")
     else:
         print("消息发送失败，状态码:", response.status_code)
+
+    # 标记发送成功
+    data['send_done']=1
